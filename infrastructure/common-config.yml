@@ -15,6 +15,10 @@ data:
 
   JOUTIO_KAFKA_HOST: kafka
   JOUTIO_KAFKA_PORT: "9092"
+  # Topic Axon commun à TOUS les services. Identity publie sur `joutio-events` ;
+  # sans cette variable les autres services consomment le topic par défaut `Axon.Events`
+  # et ne reçoivent jamais les événements d'identité (pas de profil créé, etc.).
+  AXON_KAFKA_DEFAULT_TOPIC: joutio-events
   # Axon (extension axon-kafka) lit axon.kafka.bootstrap-servers (défaut localhost:9092),
   # distinct de spring.kafka.bootstrap-servers utilisé par Spring Kafka.
   AXON_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
