@@ -34,7 +34,7 @@ spec:
               app: joutio-identity
       containers:
         - name: joutio-identity
-          image: ghcr.io/joutio/identity:1.0.0
+          image: ghcr.io/joutio/identity:1.0.1
           imagePullPolicy: IfNotPresent
           env:
             - name: SPRING_PROFILES_ACTIVE
@@ -137,7 +137,7 @@ data:
   # Liste blanche d'emails obtenant ROLE_ADMIN (Grafana).
   JOUTIO_ADMIN_EMAILS: c.nadjim@gmail.com
   # Facebook Login (App ID public). L'App Secret est porté par joutio-identity-secret.
-  JOUTIO_OAUTH2_FACEBOOK_CLIENT_ID: "2122240041993058"
+  JOUTIO_OAUTH2_FACEBOOK_CLIENT_ID: ""
   # Emails transactionnels (codes de connexion OTP) via Resend.
   # La clé API est portée par le secret joutio-identity-mail.
   JOUTIO_MAIL_FROM: Joutio <no-reply@joutio.com>
