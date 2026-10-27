@@ -119,7 +119,7 @@ data:
   MICROSERVICE_SWAGGER_SERVER_URL: https://api.joutio.com
   # Web Push : clé publique VAPID (paire dont la privée est scellée dans joutio-bff-push).
   # La paire doit rester stable à vie ; une rotation invalide les abonnements navigateur.
-  JOUTIO_PUSH_VAPID_PUBLIC_KEY: BM94efD-XzDsNN1Q7QpDue7uusKvRZ2Loh7gIOCNWAHnD9v-HRgB5BOOIhShy3m-1_E45wiP5Yy7cyV8Nrr2KRc
+  JOUTIO_PUSH_VAPID_PUBLIC_KEY: BL_39OmgadenPV1SL5R66kASz-mfMN2hCruEIAHi22kIXH2hkBWH9cZKzeZX5EjZ6G26yA8Hw0lLZCmw8kRmHdQ
   JOUTIO_PUSH_VAPID_SUBJECT: mailto:admin@joutio.com
   # Stockage d'images (MinIO) : endpoint in-cluster + URL publique (Ingress media.).
   # Les clés (JOUTIO_MEDIA_ACCESS_KEY/SECRET_KEY) viennent du SealedSecret joutio-bff-media (apps/minio).

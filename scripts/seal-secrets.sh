@@ -151,6 +151,31 @@ seal_ghcr() {
     --docker-email="${GHCR_EMAIL:-unused@joutio.local}"
 }
 
+# Credential ArgoCD pour le dépôt GitOps. Le dépôt est public aujourd'hui, mais on garde
+# un credential dédié pour les futurs dépôts privés et pour éviter un changement de
+# bootstrap le jour où il le deviendra.
+seal_argocd_repo_creds() {
+  kubectl create secret generic joutio-gitops-repo-creds --namespace argocd \
+    --from-literal=type=git \
+    --from-literal=url=https://github.com/joutio/joutio-gitops.git \
+    --from-literal=username="${GHCR_USERNAME:?GHCR_USERNAME manquant}" \
+    --from-literal=password="${GHCR_TOKEN:?GHCR_TOKEN manquant}" \
+    --dry-run=client -o json \
+    | jq '.metadata.labels["argocd.argoproj.io/secret-type"]="repo-creds"' \
+    | kubeseal --cert "${SEALED_SECRETS_CERT}" --format=yaml \
+    > "${ROOT_DIR}/argocd/repo-creds/sealed-secret.yml"
+  echo "sealed: argocd/repo-creds/sealed-secret.yml"
+}
+
+# Secret de pull GHCR du namespace argocd (ArgoCD Image Updater).
+seal_argocd_registry() {
+  seal_docker argocd ghcr-pull argocd/repo-creds/registry-secret.yml \
+    --docker-server=ghcr.io \
+    --docker-username="${GHCR_USERNAME:?GHCR_USERNAME manquant}" \
+    --docker-password="${GHCR_TOKEN:?GHCR_TOKEN manquant}" \
+    --docker-email="${GHCR_EMAIL:-unused@joutio.local}"
+}
+
 # Secrets de la stack d'observabilité (namespace `monitoring`).
 seal_monitoring() {
   local out="monitoring/secrets/sealed-secret.yml"
@@ -171,7 +196,11 @@ seal_all() {
   seal_infra
   seal_ghcr
   seal_identity
-  seal_identity_facebook
+  if [ -n "${JOUTIO_OAUTH2_FACEBOOK_SECRET:-}" ]; then
+    seal_identity_facebook
+  else
+    echo "skip: identity-facebook (JOUTIO_OAUTH2_FACEBOOK_SECRET absent)"
+  fi
   for svc in theme game social matchmaking profile leaderboard notification console bff; do
     seal_service "${svc}"
   done
@@ -190,13 +219,15 @@ case "${1:-all}" in
   argocd-oidc) seal_argocd_oidc ;;
   infra) seal_infra ;;
   ghcr-pull) seal_ghcr ;;
+  argocd-repo-creds) seal_argocd_repo_creds ;;
+  argocd-registry) seal_argocd_registry ;;
   monitoring) seal_monitoring ;;
   theme|game|social|matchmaking|profile|leaderboard|notification|console|bff) seal_service "$1" ;;
   bff-push) seal_bff_push ;;
   minio) seal_minio ;;
   bff-media) seal_bff_media ;;
   *)
-    echo "usage: $0 [all|infra|ghcr-pull|monitoring|identity|identity-facebook|identity-mail|identity-grafana|identity-argocd|argocd-oidc|theme|game|social|matchmaking|profile|leaderboard|notification|console|bff|bff-push|minio|bff-media]" >&2
+    echo "usage: $0 [all|infra|ghcr-pull|argocd-repo-creds|argocd-registry|monitoring|identity|identity-facebook|identity-mail|identity-grafana|identity-argocd|argocd-oidc|theme|game|social|matchmaking|profile|leaderboard|notification|console|bff|bff-push|minio|bff-media]" >&2
     exit 1
     ;;
 esac
