@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: joutio-identity
+  namespace: joutio-prod
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - identity.joutio.com
+      secretName: identity-joutio-com-tls
+  rules:
+    - host: identity.joutio.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: joutio-identity
+                port:
+                  number: 80

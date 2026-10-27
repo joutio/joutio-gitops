@@ -1,0 +1,11 @@
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: joutio-apps
+  namespace: argocd
+spec:
+  # Lit la configuration d'image depuis les annotations des Applications `joutio-*`
+  # (image-list, update-strategy, write-back-method, git-branch).
+  applicationRefs:
+    - namePattern: "joutio-*"
+      useAnnotations: true

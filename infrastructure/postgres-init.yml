@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: joutio-postgres-init
+  namespace: joutio-prod
+data:
+  001-databases.sql: |
+    CREATE DATABASE joutio_identity OWNER joutio ENCODING 'UTF8';
+    CREATE DATABASE joutio_theme OWNER joutio ENCODING 'UTF8';
+    CREATE DATABASE joutio_game OWNER joutio ENCODING 'UTF8';
+    CREATE DATABASE joutio_social OWNER joutio ENCODING 'UTF8';
+    CREATE DATABASE joutio_matchmaking OWNER joutio ENCODING 'UTF8';
+    CREATE DATABASE joutio_profile OWNER joutio ENCODING 'UTF8';
+    CREATE DATABASE joutio_leaderboard OWNER joutio ENCODING 'UTF8';
+    CREATE DATABASE joutio_bff OWNER joutio ENCODING 'UTF8';
+    CREATE DATABASE joutio_notification OWNER joutio ENCODING 'UTF8';
+    CREATE DATABASE joutio_console OWNER joutio ENCODING 'UTF8';

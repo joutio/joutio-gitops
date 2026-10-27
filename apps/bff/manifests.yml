@@ -1,0 +1,130 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: joutio-bff
+  namespace: joutio-prod
+  labels:
+    app.kubernetes.io/part-of: joutio
+    app: joutio-bff
+    # Pas de label `app.kubernetes.io/component: axon` : le BFF émet des queries/commands et
+    # consomme Kafka, mais n'est pas un fournisseur — inutile de le rendre découvrable.
+spec:
+  # Réplicas pilotés par le HPA (apps/bff/autoscaling.yml) — ne pas fixer `replicas` ici.
+  # Multi-réplique sûr : les groupes de fan-out STOMP sont instance-scopés (consommation
+  # complète par pod, tokens suffixés — cf. SDK) et le Web Push reste sur un groupe global unique.
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: joutio
+      app: joutio-bff
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: joutio
+        app: joutio-bff
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      # Répartit les réplicas sur les 2 nœuds (soft : un nœud seul reste schedulable).
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: joutio-bff
+      containers:
+        - name: joutio-bff
+          image: ghcr.io/joutio/bff:1.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+          envFrom:
+            - configMapRef:
+                name: joutio-common-config
+            - configMapRef:
+                name: joutio-oauth-client-config
+            - configMapRef:
+                name: joutio-bff-config
+            - secretRef:
+                name: joutio-bff-secret
+            # Clé privée VAPID (Web Push) — secret dédié, rescellable indépendamment.
+            - secretRef:
+                name: joutio-bff-push
+            # Utilisateur applicatif MinIO (images) — secret défini dans apps/minio.
+            - secretRef:
+                name: joutio-bff-media
+          resources:
+            requests:
+              # Base de calcul du HPA : ~1 réplique pour 350+ sessions STOMP actives.
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            failureThreshold: 60
+            periodSeconds: 5
+          # Sondes tolérantes à la saturation CPU (test 1000 parties) : sous charge, /actuator/health
+          # répond en plusieurs secondes — des seuils serrés font tuer le pod en boucle par le kubelet
+          # (exit 137), ce qui perd les requêtes en vol (joins de salle).
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: joutio-bff
+  namespace: joutio-prod
+  labels:
+    app.kubernetes.io/part-of: joutio
+    app: joutio-bff
+spec:
+  selector:
+    app.kubernetes.io/part-of: joutio
+    app: joutio-bff
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: joutio-bff-config
+  namespace: joutio-prod
+data:
+  JOUTIO_DB_NAME: joutio_bff
+  # URL publique du serveur OpenAPI (BFF = unique façade API).
+  MICROSERVICE_SWAGGER_SERVER_URL: https://api.joutio.com
+  # Web Push : clé publique VAPID (paire dont la privée est scellée dans joutio-bff-push).
+  # La paire doit rester stable à vie ; une rotation invalide les abonnements navigateur.
+  JOUTIO_PUSH_VAPID_PUBLIC_KEY: BM94efD-XzDsNN1Q7QpDue7uusKvRZ2Loh7gIOCNWAHnD9v-HRgB5BOOIhShy3m-1_E45wiP5Yy7cyV8Nrr2KRc
+  JOUTIO_PUSH_VAPID_SUBJECT: mailto:admin@joutio.com
+  # Stockage d'images (MinIO) : endpoint in-cluster + URL publique (Ingress media.).
+  # Les clés (JOUTIO_MEDIA_ACCESS_KEY/SECRET_KEY) viennent du SealedSecret joutio-bff-media (apps/minio).
+  # Appels internes identity (OTP de suppression de compte).
+  JOUTIO_IDENTITY_URL: http://joutio-identity
+  JOUTIO_MEDIA_S3_ENDPOINT: http://minio
+  JOUTIO_MEDIA_S3_BUCKET: joutio-media
+  JOUTIO_MEDIA_PUBLIC_BASE_URL: https://media.joutio.com/joutio-media/

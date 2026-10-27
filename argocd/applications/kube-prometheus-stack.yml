@@ -1,0 +1,198 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: 91.4.1
+    helm:
+      releaseName: kube-prometheus-stack
+      values: |
+        # CRDs non gérés par ArgoCD : les CRD prometheus-operator pèsent > 1 Mo et
+        # l'apply ArgoCD (client-side, pas de SSA pour les CRDs) échoue sur la limite
+        # d'annotation 256 Ko. Ils sont installés hors chart (et conservés à la purge :
+        # pas de tracking ArgoCD) — lors d'un bump de chart, les appliquer manuellement :
+        #   helm show crds prometheus-community/kube-prometheus-stack --version <v> \
+        #     | kubectl apply --server-side -f -
+        crds:
+          enabled: false
+
+        # k3s : les composants control-plane ne sont pas exposés séparément (targets DOWN sinon).
+        kubeEtcd:
+          enabled: false
+        kubeControllerManager:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeProxy:
+          enabled: false
+
+        prometheus:
+          prometheusSpec:
+            retention: 7d
+            retentionSize: 4GB
+            scrapeInterval: 30s
+            # Les ServiceMonitor/PodMonitor/Probe/PrometheusRule sont découverts dans TOUS
+            # les namespaces : les services Joutio vivent dans `joutio-prod`.
+            serviceMonitorSelectorNilUsesHelmValues: false
+            serviceMonitorNamespaceSelector: {}
+            podMonitorSelectorNilUsesHelmValues: false
+            podMonitorNamespaceSelector: {}
+            probeSelectorNilUsesHelmValues: false
+            probeNamespaceSelector: {}
+            ruleSelectorNilUsesHelmValues: false
+            ruleNamespaceSelector: {}
+            resources:
+              requests:
+                cpu: 200m
+                memory: 512Mi
+              limits:
+                cpu: "1"
+                memory: 1Gi
+            storageSpec:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: local-path
+                  accessModes:
+                    - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: 8Gi
+
+        alertmanager:
+          alertmanagerSpec:
+            # Les AlertmanagerConfig (dont la config Telegram) sont découverts dans tous les namespaces.
+            alertmanagerConfigSelector: {}
+            alertmanagerConfigNamespaceSelector: {}
+            resources:
+              requests:
+                cpu: 50m
+                memory: 96Mi
+              limits:
+                memory: 192Mi
+            storage:
+              volumeClaimTemplate:
+                spec:
+                  storageClassName: local-path
+                  accessModes:
+                    - ReadWriteOnce
+                  resources:
+                    requests:
+                      storage: 1Gi
+
+        grafana:
+          enabled: true
+          admin:
+            existingSecret: grafana-admin
+            userKey: admin-user
+            passwordKey: admin-password
+          ingress:
+            enabled: true
+            ingressClassName: traefik
+            annotations:
+              cert-manager.io/cluster-issuer: letsencrypt-prod
+            hosts:
+              - grafana.joutio.com
+            tls:
+              - secretName: grafana-tls
+                hosts:
+                  - grafana.joutio.com
+          # Secret OIDC injecté en variables d'environnement (le secret n'apparaît jamais
+          # dans la ConfigMap `grafana.ini`, cf. `assertNoLeakedSecrets`).
+          envFromSecret: grafana-oidc
+          "grafana.ini":
+            server:
+              root_url: https://grafana.joutio.com
+            auth:
+              # OIDC Joutio uniquement : plus de formulaire/basic auth local (strict).
+              disable_login_form: true
+              basic:
+                enabled: false
+            "auth.generic_oauth":
+              enabled: true
+              name: Joutio
+              allow_sign_up: true
+              client_id: grafana
+              client_secret: $__env{GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET}
+              scopes: openid profile email
+              # auth_url = URL publique (navigateur) ; token/api in-cluster (évite le hairpin NAT).
+              auth_url: https://identity.joutio.com/oauth2/authorize
+              token_url: http://joutio-identity.joutio-prod.svc.cluster.local/oauth2/token
+              api_url: http://joutio-identity.joutio-prod.svc.cluster.local/userinfo
+              use_pkce: true
+              # Un reset complet de l'IdP régénère les `sub` (userId) pour un même email :
+              # on autorise Grafana à rattacher le compte par email plutôt que de tenter
+              # une création qui échoue (« user not found »).
+              oauth_allow_insecure_email_lookup: true
+              # Admins uniquement : sans ROLE_ADMIN, la connexion est refusée (strict).
+              role_attribute_path: "contains(roles, 'ROLE_ADMIN') && 'Admin'"
+              role_attribute_strict: true
+          sidecar:
+            dashboards:
+              enabled: true
+              label: grafana_dashboard
+              searchNamespace: monitoring
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 768Mi
+          persistence:
+            enabled: true
+            storageClassName: local-path
+            size: 2Gi
+
+        prometheus-node-exporter:
+          # Exclusions par défaut du chart + collector textfile (température / throttling Pi,
+          # alimenté par un timer systemd déployé par joutio-infrastructure).
+          extraArgs:
+            - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|run/containerd/.+|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+            - --collector.filesystem.fs-types-exclude=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|sysfs|tracefs|erofs)$
+            - --collector.textfile.directory=/var/lib/node_exporter/textfile_collector
+          extraHostVolumeMounts:
+            - name: textfile-collector
+              hostPath: /var/lib/node_exporter/textfile_collector
+              type: DirectoryOrCreate
+              mountPath: /var/lib/node_exporter/textfile_collector
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              memory: 96Mi
+
+        kube-state-metrics:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+
+        prometheusOperator:
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              memory: 192Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

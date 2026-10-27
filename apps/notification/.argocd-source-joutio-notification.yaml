@@ -1,0 +1,3 @@
+kustomize:
+  images:
+  - ghcr.io/joutio/notification:1.0.0

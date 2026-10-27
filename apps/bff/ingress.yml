@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: joutio-bff
+  namespace: joutio-prod
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - api.joutio.com
+      secretName: api-joutio-com-tls
+  rules:
+    - host: api.joutio.com
+      http:
+        paths:
+          # Façade REST `/api/**` **et** endpoint STOMP `/ws/**` (Traefik proxifie le WebSocket).
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: joutio-bff
+                port:
+                  number: 80

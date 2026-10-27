@@ -1,0 +1,303 @@
+# Règles d'alerte Joutio (métriques Prometheus/Micrometer, node-exporter, KSM, exporters).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: joutio-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: joutio
+spec:
+  groups:
+    - name: joutio.node
+      rules:
+        - alert: NodeDown
+          expr: up{job="node-exporter"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Nœud Raspberry Pi injoignable"
+            description: "Le node-exporter {{ $labels.instance }} est down depuis 5 minutes."
+        - alert: NodeHighCpuTemperature
+          expr: pi_cpu_temperature_celsius > 75
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Température CPU élevée sur {{ $labels.instance }}"
+            description: "Température {{ $value | printf \"%.1f\" }}°C (> 75°C) depuis 10 min."
+        - alert: NodeThrottled
+          expr: pi_throttled_throttled == 1
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "CPU throttlé sur {{ $labels.instance }}"
+            description: "Le Pi throttle (thermique ou alimentation). Vérifier ventilation/alimentation."
+        - alert: NodeUnderVoltage
+          expr: pi_throttled_under_voltage == 1
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Sous-tension détectée sur {{ $labels.instance }}"
+            description: "Alimentation insuffisante (undervoltage) — risque de throttling/instabilité."
+        - alert: NodeFilesystemSpaceFillingUp
+          expr: |
+            (
+              node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs|squashfs|vfat|ramfs"}
+              / node_filesystem_size_bytes{fstype!~"tmpfs|fuse.lxcfs|squashfs|vfat|ramfs"}
+            ) < 0.15
+            and
+            (
+              node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs|squashfs|vfat|ramfs"}
+              / node_filesystem_size_bytes{fstype!~"tmpfs|fuse.lxcfs|squashfs|vfat|ramfs"}
+            ) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Disque presque plein sur {{ $labels.instance }} ({{ $labels.mountpoint }})"
+            description: "Il reste moins de 15% d'espace disque."
+        - alert: NodeMemoryHigh
+          expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.9
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Mémoire saturée sur {{ $labels.instance }}"
+            description: "Plus de 90% de la RAM utilisée depuis 10 min."
+
+    - name: joutio.kubernetes
+      rules:
+        - alert: KubePodCrashLooping
+          expr: increase(kube_pod_container_status_restarts_total{namespace=~"joutio-prod|monitoring"}[15m]) > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod en CrashLoop : {{ $labels.namespace }}/{{ $labels.pod }}"
+            description: "{{ $value | printf \"%.0f\" }} redémarrages en 15 min."
+        - alert: KubeDeploymentUnavailable
+          expr: |
+            kube_deployment_status_replicas_available{namespace=~"joutio-prod|monitoring"}
+              < kube_deployment_spec_replicas{namespace=~"joutio-prod|monitoring"}
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Deployment indisponible : {{ $labels.namespace }}/{{ $labels.deployment }}"
+            description: "Répliques disponibles inférieures au souhaité depuis 10 min."
+        # Catche la cause racine (limite cgroup dépassée) en amont de TargetDown/KubePodNotReady.
+        # Le `and` sur l'augmentation des restarts permet à l'alerte de se résoudre dès que le pod
+        # ne redémarre plus (le gauge `last_terminated_reason` reste sinon OOMKilled à vie).
+        - alert: KubeContainerOOMKilled
+          expr: |
+            kube_pod_container_status_last_terminated_reason{reason="OOMKilled", namespace=~"joutio-prod|monitoring"} == 1
+            and on (namespace, pod, container)
+            increase(kube_pod_container_status_restarts_total{namespace=~"joutio-prod|monitoring"}[15m]) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Conteneur tué pour OOM : {{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }})"
+            description: "Redémarrage(s) pour dépassement de la limite mémoire dans les 15 dernières minutes."
+
+    - name: joutio.apps
+      rules:
+        - alert: JoutioServiceDown
+          expr: |
+            up{namespace="joutio-prod",
+                job=~"joutio-.*"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Service Joutio injoignable : {{ $labels.job }}"
+            description: "Prometheus ne scrape plus {{ $labels.job }} depuis 2 min."
+        - alert: JoutioGatewayHighErrorRate
+          expr: |
+            (
+              sum(rate(http_server_requests_seconds_count{application="joutio-gateway", outcome="SERVER_ERROR"}[5m]))
+              /
+              sum(rate(http_server_requests_seconds_count{application="joutio-gateway"}[5m]))
+            ) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Taux d'erreur 5xx élevé sur le gateway"
+            description: "Plus de 5% des requêtes du gateway sont en erreur serveur."
+        - alert: JoutioGatewayHighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(http_server_requests_seconds_bucket{application="joutio-gateway"}[5m]))
+            ) > 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Latence p95 élevée sur le gateway"
+            description: "Le p95 des requêtes gateway dépasse 1s depuis 10 min."
+        - alert: JoutioJvmHeapHigh
+          expr: |
+            (
+              sum by (application) (jvm_memory_used_bytes{application=~"joutio-.*", area="heap"})
+              /
+              sum by (application) (jvm_memory_max_bytes{application=~"joutio-.*", area="heap"})
+            ) > 0.9
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Heap JVM saturé : {{ $labels.application }}"
+            description: "Le tas utilisé dépasse 90% du max alloué depuis 10 min."
+        - alert: JoutioThemeSeedFailures
+          expr: joutio_theme_seed_topics_total{application="joutio-theme", outcome="failed"} > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Seed de thèmes en échec : {{ $labels.application }}"
+            description: "Au moins un thème a échoué au seeding (reste DRAFT/incomplet, invisible au catalogue). Vérifier les logs DataSeeder puis recréer le pod joutio-theme pour relancer la réparation."
+
+    - name: joutio.axon
+      rules:
+        - alert: JoutioAxonEventProcessorErrors
+          expr: max by (application, processor) (joutio_axon_event_processor_error{application=~"joutio-.*"}) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Processeur Axon en erreur : {{ $labels.application }}"
+            description: "Un processeur d'événements reste en erreur depuis 5 min (risque de poison pill / token bloqué) : {{ $labels.processor }}."
+        - alert: JoutioAxonEventProcessingFailures
+          expr: |
+            sum by (application, processor) (
+              rate(joutio_axon_events_processed_total{application=~"joutio-.*", result="failure"}[10m])
+            ) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Échecs répétés d'événements Axon : {{ $labels.application }}"
+            description: "Des événements échouent en boucle sur {{ $labels.processor }} (vérifier logs + token)."
+        - alert: JoutioAxonConsoleDlqNotEmpty
+          expr: max by (application, processor) (joutio_axon_console_dlq_size{application=~"joutio-.*"}) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Dead-letter queue non vide : {{ $labels.application }}"
+            description: "Des événements en échec attendent dans la DLQ de {{ $labels.processor }} (inspection/rejeu via joutio-console)."
+        - alert: JoutioAxonProcessorNotCaughtUp
+          expr: min by (application, processor) (joutio_axon_console_processor_caught_up{application=~"joutio-.*"}) < 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Processor Axon en retard : {{ $labels.application }}"
+            description: "Le processor {{ $labels.processor }} n'est pas à jour sur tous ses segments depuis 10 min (backlog — vérifier la charge et joutio-console)."
+
+    - name: joutio.business
+      rules:
+        - alert: JoutioNewUserRegistered
+          expr: |
+            increase(joutio_axon_events_published_total{
+              application="joutio-identity", name="UserRegisteredEvent"}[5m]) > 0
+          labels:
+            severity: info
+          annotations:
+            summary: "Nouvel utilisateur inscrit sur Joutio"
+            description: "{{ $value }} inscription(s) détectée(s) sur les 5 dernières minutes."
+        - alert: JoutioUserLoggedIn
+          expr: |
+            increase(joutio_axon_events_published_total{
+              application="joutio-identity", name="UserLoggedInEvent"}[5m]) > 0
+          labels:
+            severity: info
+          annotations:
+            summary: "Nouvelle connexion à Joutio"
+            description: "{{ $value }} connexion(s) détectée(s) sur les 5 dernières minutes."
+
+    - name: joutio.platform
+      rules:
+        - alert: PostgresDown
+          expr: pg_up == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Postgres injoignable"
+            description: "postgres_exporter ne peut plus joindre la base depuis 2 min."
+        - alert: PostgresConnectionsHigh
+          # max_connections=150 (args du StatefulSet) : alerte à 80 % pour anticiper la saturation.
+          expr: sum(pg_stat_activity_count) > 120
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Postgres proche de la saturation de connexions"
+            description: "{{ $value }} connexions actives (> 120/150) depuis 5 min — augmenter max_connections ou réduire les pools Hikari."
+        - alert: KafkaDown
+          expr: up{job="kafka-exporter"} == 0 or kafka_brokers < 1
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Kafka injoignable"
+            description: "Aucun broker Kafka détecté depuis 2 min."
+        - alert: KafkaConsumerLagHigh
+          expr: sum by (consumergroup) (kafka_consumergroup_lag) > 1000
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Lag Kafka élevé : {{ $labels.consumergroup }}"
+            description: "Le consumer group {{ $labels.consumergroup }} accuse un lag > 1000 depuis 10 min."
+        - alert: JoutioPublicEndpointDown
+          expr: probe_success{job="blackbox-joutio"} == 0
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Endpoint public down : {{ $labels.instance }}"
+            description: "La sonde blackbox échoue depuis 3 min."
+        - alert: CertificateExpiringSoon
+          expr: (probe_ssl_earliest_cert_expiry{job="blackbox-joutio"} - time()) / 86400 < 14
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Certificat TLS bientôt expiré : {{ $labels.instance }}"
+            description: "Le certificat expire dans moins de 14 jours."
+
+    - name: joutio.telemetry
+      rules:
+        - alert: JoutioClientErrorSpike
+          expr: sum(increase(joutio_client_errors_total[10m])) > 20
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pic d'erreurs côté navigateur"
+            description: "{{ $value | printf \"%.0f\" }} erreurs client sur 10 min — consulter le dashboard « Joutio — Activation & erreurs » et Loki."
+
+    - name: joutio.monitoring
+      rules:
+        # Les PVC `local-path` sont des hostPath : kubelet_volume_stats_* remonte les stats du
+        # disque racine du Pi (partagé par tous les PVC), pas celles du PVC. Les alertes PVC
+        # sont donc trompeuses (faux positifs sur le disque hôte). On alerte sur le disque
+        # hôte réel — la purge quotidienne des images (joutio-image-prune) limite sa croissance.
+        - alert: NodeRootFilesystemFullInFourDays
+          expr: |
+            predict_linear(
+              node_filesystem_avail_bytes{mountpoint="/"}[6h],
+              4 * 24 * 3600
+            ) < 0
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Disque racine saturé sous 4 jours : {{ $labels.instance }}"
+            description: "Projection linéaire (6h) → disque {{ $labels.mountpoint }} plein sous 4 jours (images containerd / PVC local-path / logs)."

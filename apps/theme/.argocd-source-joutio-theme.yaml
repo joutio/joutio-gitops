@@ -1,0 +1,3 @@
+kustomize:
+  images:
+  - ghcr.io/joutio/theme:1.0.0

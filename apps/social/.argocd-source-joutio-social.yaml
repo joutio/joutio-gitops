@@ -1,0 +1,3 @@
+kustomize:
+  images:
+  - ghcr.io/joutio/social:1.0.0

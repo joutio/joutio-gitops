@@ -1,0 +1,28 @@
+# Sondes blackbox des endpoints publics : disponibilité HTTP + expiration TLS.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: joutio-public-endpoints
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: joutio
+spec:
+  jobName: blackbox-joutio
+  interval: 60s
+  scrapeTimeout: 10s
+  module: http_2xx
+  prober:
+    url: prometheus-blackbox-exporter.monitoring.svc.cluster.local:9115
+  targets:
+    staticConfig:
+      labels:
+        probe_group: public
+      static:
+        - https://app.joutio.com
+        - https://api.joutio.com
+        # Identity n'héberge volontairement pas de page /login (SPA) : la racine redirige
+        # vers /login qui répond 403 par conception. On sonde l'endpoint de santé public.
+        - https://identity.joutio.com/actuator/health
+        - https://console.joutio.com
+        # Stockage d'images (MinIO) : endpoint de liveness public (200 sans authentification).
+        - https://media.joutio.com/minio/health/live

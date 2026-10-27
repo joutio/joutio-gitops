@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: joutio-game
+  namespace: joutio-prod
+  labels:
+    app.kubernetes.io/part-of: joutio
+    app.kubernetes.io/component: axon
+    app: joutio-game
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: joutio
+      app: joutio-game
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/part-of: joutio
+        app.kubernetes.io/component: axon
+        app: joutio-game
+    spec:
+      imagePullSecrets:
+        - name: ghcr-pull
+      containers:
+        - name: joutio-game
+          image: ghcr.io/joutio/game:1.0.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: prod
+          envFrom:
+            - configMapRef:
+                name: joutio-common-config
+            - configMapRef:
+                name: joutio-oauth-client-config
+            - configMapRef:
+                name: joutio-game-config
+            - secretRef:
+                name: joutio-game-secret
+          resources:
+            requests:
+              cpu: 150m
+              memory: 448Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            failureThreshold: 60
+            periodSeconds: 5
+          # Sondes tolérantes à la saturation CPU (test charge 1000 parties) : sous charge,
+          # /actuator/health peut répondre en plusieurs secondes — seuils serrés = kills en boucle du kubelet.
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: joutio-game
+  namespace: joutio-prod
+  labels:
+    app.kubernetes.io/part-of: joutio
+    app.kubernetes.io/component: axon
+    app: joutio-game
+spec:
+  selector:
+    app.kubernetes.io/part-of: joutio
+    app.kubernetes.io/component: axon
+    app: joutio-game
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8080
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: joutio-game-config
+  namespace: joutio-prod
+data:
+  JOUTIO_DB_NAME: joutio_game
+  # URL publique du serveur OpenAPI (acces via le gateway).
+  MICROSERVICE_SWAGGER_SERVER_URL: https://api.joutio.com/game-service

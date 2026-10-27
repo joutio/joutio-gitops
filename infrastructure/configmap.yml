@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: joutio-infra-config
+  namespace: joutio-prod
+data:
+  POSTGRES_DB: joutio
+  POSTGRES_USER: joutio

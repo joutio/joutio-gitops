@@ -1,0 +1,3 @@
+kustomize:
+  images:
+  - ghcr.io/joutio/bff:1.0.0

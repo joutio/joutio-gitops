@@ -1,0 +1,227 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: joutio-prod
+  labels:
+    app: minio
+spec:
+  selector:
+    app: minio
+  ports:
+    # API S3 uniquement : la console (9001) n'est ni exposée ni activée (MINIO_BROWSER=off).
+    - name: s3
+      port: 80
+      targetPort: 9000
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: minio
+  namespace: joutio-prod
+  labels:
+    app: minio
+spec:
+  serviceName: minio
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      # Données locales (local-path) : épinglé au nœud qui porte le volume (pi-node1 = Postgres+Kafka).
+      nodeSelector:
+        kubernetes.io/hostname: pi-node2
+      initContainers:
+        # Le volume local-path est créé root:root ; l'image Bitnami tourne en 1001.
+        - name: volume-permissions
+          image: docker.io/bitnamilegacy/minio
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "-c", "chown -R 1001:1001 /data"]
+          securityContext:
+            runAsUser: 0
+          volumeMounts:
+            - name: minio-data
+              mountPath: /data
+      containers:
+        - name: minio
+          image: docker.io/bitnamilegacy/minio
+          imagePullPolicy: IfNotPresent
+          # Binaire MinIO direct (sans les scripts d'entrypoint Bitnami) : mêmes conventions
+          # que l'image officielle (env MINIO_ROOT_*, /minio/health/*, port 9000).
+          command: ["/opt/bitnami/minio/bin/minio"]
+          args:
+            - server
+            - /data
+          env:
+            - name: MINIO_BROWSER
+              value: "off"
+            - name: MINIO_UPDATE
+              value: "off"
+          envFrom:
+            - secretRef:
+                name: joutio-minio-secret
+          ports:
+            - name: s3
+              containerPort: 9000
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          volumeMounts:
+            - name: minio-data
+              mountPath: /data
+          livenessProbe:
+            httpGet:
+              path: /minio/health/live
+              port: 9000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: 9000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+  volumeClaimTemplates:
+    - metadata:
+        name: minio-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 8Gi
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: joutio-minio-init
+  namespace: joutio-prod
+data:
+  # Policy de lecture anonyme minimale : GetObject uniquement (pas de listing, pas d'écriture).
+  public-read.json: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Principal": {"AWS": ["*"]},
+          "Action": ["s3:GetObject"],
+          "Resource": ["arn:aws:s3:::joutio-media/*"]
+        }
+      ]
+    }
+  # Policy de l'utilisateur applicatif (BFF) : read/write sur le seul bucket joutio-media.
+  joutio-media-rw.json: |
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "s3:GetObject",
+            "s3:PutObject",
+            "s3:DeleteObject",
+            "s3:GetBucketLocation",
+            "s3:ListBucket"
+          ],
+          "Resource": [
+            "arn:aws:s3:::joutio-media",
+            "arn:aws:s3:::joutio-media/*"
+          ]
+        }
+      ]
+    }
+  setup.sh: |
+    #!/bin/bash
+    # Initialisation idempotente : bucket, lecture publique, utilisateur applicatif.
+    # Rejoué à chaque sync ArgoCD (hook PostSync, suppression avant recréation).
+    set -eu
+    MC="${MC:-mc}"
+    command -v "$MC" >/dev/null 2>&1 || MC=/opt/bitnami/mc/bin/mc
+    i=0
+    until "$MC" alias set local "http://minio" "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1; do
+      i=$((i + 1))
+      if [ "$i" -ge 60 ]; then
+        echo "minio indisponible après 5 minutes" >&2
+        exit 1
+      fi
+      sleep 5
+    done
+    "$MC" mb --ignore-existing local/joutio-media
+    "$MC" anonymous set-json /config/public-read.json local/joutio-media
+    if [ -n "${JOUTIO_MEDIA_ACCESS_KEY:-}" ]; then
+      "$MC" admin user add local "$JOUTIO_MEDIA_ACCESS_KEY" "$JOUTIO_MEDIA_SECRET_KEY" >/dev/null 2>&1 || true
+      "$MC" admin policy create local joutio-media-rw /config/joutio-media-rw.json >/dev/null 2>&1 || true
+      "$MC" admin policy attach local joutio-media-rw --user "$JOUTIO_MEDIA_ACCESS_KEY" >/dev/null 2>&1 || true
+    fi
+    echo "bucket joutio-media prêt (lecture publique, écriture BFF)"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init
+  namespace: joutio-prod
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: minio-init
+          image: docker.io/bitnamilegacy/minio-client
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/bash", "/config/setup.sh"]
+          envFrom:
+            - secretRef:
+                name: joutio-minio-secret
+            - secretRef:
+                name: joutio-bff-media
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          configMap:
+            name: joutio-minio-init
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minio
+  namespace: joutio-prod
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - media.joutio.com
+      secretName: media-joutio-com-tls
+  rules:
+    # Lecture publique des objets (bucket public-read GetObject) ; les écritures exigent
+    # l'utilisateur applicatif scellé (joutio-bff-media), utilisé uniquement par le BFF.
+    - host: media.joutio.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: minio
+                port:
+                  number: 80

@@ -1,0 +1,48 @@
+# Configuration commune aux microservices (partagée par les 7 services ET identity) :
+# base de données, broker Axon (Kafka), découverte Kubernetes, observabilité, Swagger.
+#
+# Le client OAuth2 M2M `server-client` vit dans `oauth-client-config.yml` (identity a sa
+# propre registration, avec un secret différent) — voir ce fichier.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: joutio-common-config
+  namespace: joutio-prod
+data:
+  JOUTIO_DB_HOST: postgres
+  JOUTIO_DB_PORT: "5432"
+  JOUTIO_DB_USERNAME: joutio
+
+  JOUTIO_KAFKA_HOST: kafka
+  JOUTIO_KAFKA_PORT: "9092"
+  # Axon (extension axon-kafka) lit axon.kafka.bootstrap-servers (défaut localhost:9092),
+  # distinct de spring.kafka.bootstrap-servers utilisé par Spring Kafka.
+  AXON_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+  JOUTIO_AUTH_SERVER_URL: http://joutio-identity.joutio-prod.svc.cluster.local
+  JOUTIO_AUTH_SERVER_JWKS_URL: http://joutio-identity.joutio-prod.svc.cluster.local/oauth2/jwks
+
+  # Découverte Kubernetes native (prod). Désactivée par défaut dans le SDK.
+  SPRING_CLOUD_KUBERNETES_ENABLED: "true"
+  SPRING_CLOUD_KUBERNETES_DISCOVERY_ENABLED: "true"
+
+  # Tracing distribué : activé par le SDK d'observabilité (désactivé par défaut).
+  MICROSERVICE_OBSERVABILITY_TRACING_ENABLED: "true"
+  # Échantillonnage réduit (défaut SDK 0,1) : le fan-out Axon/Kafka côté Pi sature la mémoire du
+  # collecteur, qui refuse alors les spans (503) et fait boucler les WARN « Failed to export spans ».
+  MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "0.01"
+
+  # Console d'exploitation Axon : push des snapshots d'agent (processors/segments + DLQ).
+  # URL par défaut du SDK : http://joutio-console.joutio-prod.svc.cluster.local (Service port 80).
+  JOUTIO_AXON_CONSOLE_ENABLED: "true"
+
+  # Swagger UI : l'URL d'autorisation OAuth2 doit être PUBLIQUE (le navigateur y accède),
+  # alors que JOUTIO_AUTH_SERVER_URL reste in-cluster (JWKS côté serveur).
+  MICROSERVICE_SWAGGER_OAUTH2_AUTHORIZATION_SERVER_URL: https://identity.joutio.com
+
+  # Pool JDBC réduit : 7 bases partagent un Postgres à max_connections=150.
+  SPRING_DATASOURCE_HIKARI_MAXIMUM_POOL_SIZE: "5"
+  SPRING_DATASOURCE_HIKARI_MINIMUM_IDLE: "2"
+
+  # Swagger : masque les endpoints internes Axon (connecteurs distribués, pas d'API publique).
+  SPRINGDOC_PATHS_TO_EXCLUDE: /command-capabilities,/query-capabilities,/command-transport,/spring-command-bus-connector/**,/spring-query-bus-connector/**

@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: joutio-web-console
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: joutio-web-console=ghcr.io/joutio/joutio-web-console
+    argocd-image-updater.argoproj.io/joutio-web-console.update-strategy: semver
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/git-branch: main
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/joutio/joutio-gitops.git
+    targetRevision: main
+    path: apps/joutio-web-console
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: joutio-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,72 @@
+# Scrape /actuator/prometheus des microservices Joutio.
+# Tous exposent le port de Service nommé `http` (80 -> 8080), endpoint permitAll côté sécurité.
+# Le job label vaut le label `app` du Service (`joutio-game`, `joutio-gateway`, ...).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: joutio-services
+  namespace: joutio-prod
+  labels:
+    app.kubernetes.io/part-of: joutio
+spec:
+  jobLabel: app
+  namespaceSelector:
+    matchNames:
+      - joutio-prod
+  selector:
+    matchLabels:
+      app.kubernetes.io/part-of: joutio
+    # `joutio-web`/`joutio-web-console` sont des nginx statiques (pas d'actuator) : exclus du scrape.
+    matchExpressions:
+      - key: app
+        operator: NotIn
+        values:
+          - joutio-web
+          - joutio-web-console
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 30s
+      scrapeTimeout: 10s
+      # Conserve les labels applicatifs (application/environment/version) plutôt que de les écraser.
+      honorLabels: true
+---
+# Exporter Postgres (déployé dans joutio-prod, à côté de la base).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: postgres-exporter
+  namespace: joutio-prod
+  labels:
+    app.kubernetes.io/part-of: joutio
+spec:
+  jobLabel: app
+  selector:
+    matchLabels:
+      app: postgres-exporter
+  namespaceSelector:
+    matchNames:
+      - joutio-prod
+  endpoints:
+    - port: metrics
+      interval: 30s
+---
+# Exporter Kafka (déployé dans monitoring).
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kafka-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: joutio
+spec:
+  jobLabel: app
+  selector:
+    matchLabels:
+      app: kafka-exporter
+  namespaceSelector:
+    matchNames:
+      - monitoring
+  endpoints:
+    - port: metrics
+      interval: 30s

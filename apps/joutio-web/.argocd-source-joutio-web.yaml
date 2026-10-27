@@ -1,0 +1,3 @@
+kustomize:
+  images:
+  - ghcr.io/joutio/joutio-web:1.0.0

@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: joutio-social
+  namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: social=ghcr.io/joutio/social
+    argocd-image-updater.argoproj.io/social.update-strategy: semver
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/git-branch: main
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/joutio/joutio-gitops.git
+    targetRevision: main
+    path: apps/social
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: joutio-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: joutio-prod
+resources:
+  - manifests.yml
+  - sealed-secret.yml
+  - media-sealed-secret.yml
+images:
+  # MinIO community : les images officielles quay.io sont désormais gated (401 anonyme) et
+  # les binaires dl.min.io retirés — miroir public Bitnami legacy (MinIO 2025.7.23, AGPL,
+  # multi-arch, gelé depuis l'arrêt des builds gratuits Bitnami).
+  - name: docker.io/bitnamilegacy/minio
+    newTag: 2025.7.23-debian-12-r5
+  - name: docker.io/bitnamilegacy/minio-client
+    newTag: 2025.7.21-debian-12-r3
