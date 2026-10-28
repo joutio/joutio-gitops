@@ -11,4 +11,4 @@ resources:
   - mail-sealed-secret.yml
 images:
   - name: ghcr.io/joutio/identity
-    newTag: "1.0.1"
+    newTag: "1.0.2"
