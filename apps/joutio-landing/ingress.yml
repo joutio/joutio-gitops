@@ -1,0 +1,35 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: joutio-landing
+  namespace: joutio-prod
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts:
+        - joutio.com
+        - www.joutio.com
+      secretName: joutio-com-tls
+  rules:
+    - host: joutio.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: joutio-landing
+                port:
+                  number: 80
+    - host: www.joutio.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: joutio-landing
+                port:
+                  number: 80
