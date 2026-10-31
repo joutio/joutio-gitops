@@ -136,10 +136,9 @@ data:
   JOUTIO_SEED_DATA_ENABLED: "true"
   # Liste blanche d'emails obtenant ROLE_ADMIN (Grafana).
   JOUTIO_ADMIN_EMAILS: c.nadjim@gmail.com
-  # Facebook Login : désactivé tant que l'app Meta n'existe pas. Ne pas mettre une valeur
-  # vide : Spring refuse un client-id vide et identity ne démarre pas. Le défaut
-  # `joutio-facebook-app-id` de application.yml sert de placeholder.
-  # JOUTIO_OAUTH2_FACEBOOK_CLIENT_ID: "<app-id>"
+  # Facebook Login : App ID public (Meta). Le secret est porté par le sealed secret
+  # joutio-identity-facebook.
+  JOUTIO_OAUTH2_FACEBOOK_CLIENT_ID: "1425718219165279"
   # Emails transactionnels (codes de connexion OTP) via Resend.
   # La clé API est portée par le secret joutio-identity-mail.
   JOUTIO_MAIL_FROM: Joutio <no-reply@joutio.com>
