@@ -309,3 +309,7 @@ ssh -p 2222 pi@176.144.234.135 'bash -s -- --yes' < scripts/reset.sh
 Le reset par défaut conserve le bucket média (les visuels ne changent pas). Vérifier ensuite
 `topic_entry.title_names` (clés `FER…DIAMANT`) et `profile_entry.equipped_title` (clés
 `topicId:TIER`).
+
+## Push mobile Expo (2026-11-08)
+
+Le ConfigMap BFF active `JOUTIO_EXPO_PUSH_ENABLED=true` pour les invitations, revanches et wizz. Les identifiants FCM restent dans Expo ; aucun JSON Firebase privé ni keystore n’est versionné. Si la sécurité renforcée Expo Push est activée, fournir `JOUTIO_EXPO_PUSH_ACCESS_TOKEN` via un Secret scellé avant activation. Pour couper les envois, remettre le flag à `false` et redémarrer les pods BFF (variables injectées via `envFrom`).

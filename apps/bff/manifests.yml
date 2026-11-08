@@ -115,6 +115,8 @@ metadata:
   namespace: joutio-prod
 data:
   JOUTIO_DB_NAME: joutio_bff
+  # Notifications mobiles via Expo Push Service (identifiants FCM gérés dans Expo).
+  JOUTIO_EXPO_PUSH_ENABLED: "true"
   # URL publique du serveur OpenAPI (BFF = unique façade API).
   MICROSERVICE_SWAGGER_SERVER_URL: https://api.joutio.com
   # Web Push : clé publique VAPID (paire dont la privée est scellée dans joutio-bff-push).
