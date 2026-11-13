@@ -127,6 +127,14 @@ data:
   # Les clés (JOUTIO_MEDIA_ACCESS_KEY/SECRET_KEY) viennent du SealedSecret joutio-bff-media (apps/minio).
   # Appels internes identity (OTP de suppression de compte).
   JOUTIO_IDENTITY_URL: http://joutio-identity
+  # Date de naissance exigée des comptes créés à partir de cet instant (design/specs/screens/onboarding.md).
+  JOUTIO_BIRTH_DATE_REQUIRED_SINCE: "2026-11-13T00:00:00Z"
+  # Liens universels go.joutio.com (design/specs/screens/partage.md). Apple : `TEAMID.com.joutio.app` ;
+  # Android : empreinte SHA-256 de la clé de signature Play (séparées par des virgules). À renseigner avant
+  # la publication des builds qui déclarent les domaines associés.
+  JOUTIO_SHARE_APP_STORE_URL: https://apps.apple.com/app/joutio
+  JOUTIO_SHARE_APPLE_APP_IDS: ""
+  JOUTIO_SHARE_ANDROID_SHA256: ""
   JOUTIO_MEDIA_S3_ENDPOINT: http://minio
   JOUTIO_MEDIA_S3_BUCKET: joutio-media
   JOUTIO_MEDIA_PUBLIC_BASE_URL: https://media.joutio.com/joutio-media/

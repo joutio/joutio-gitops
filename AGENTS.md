@@ -63,6 +63,11 @@ Les machines (OS + k3s + bootstrap ArgoCD) sont provisionnées par **`joutio-inf
 | `apps/joutio-web-console` | `joutio-web-console` | `ghcr.io/joutio/joutio-web-console` | `console.joutio.com` |
 | `apps/minio`       | `minio` (infra)     | `quay.io/minio/minio` (**épinglé**, arm64) | `media.joutio.com`    |
 
+> **Liens universels** (2026-11-13) : `apps/bff/ingress-go.yml` sert `go.joutio.com` (TLS) vers le BFF —
+> middleware Traefik `go-prefix` (`addPrefix /go`) sauf `/.well-known/*` (AASA, `assetlinks.json`). DNS
+> `go.joutio.com` à créer vers l'IP publique du cluster, comme `api.`. Config : `JOUTIO_SHARE_*` et
+> `JOUTIO_BIRTH_DATE_REQUIRED_SINCE` dans `joutio-bff-config`.
+
 > **Console d'exploitation** : `apps/console` (backend, **sans** label `component: axon` — pas de
 > runtime Axon) et `apps/joutio-web-console` (SPA admin) partagent l'hôte
 > `console.joutio.com` : l'Ingress de la SPA route `/api/console` → `joutio-console` et `/`
