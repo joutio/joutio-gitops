@@ -18,4 +18,5 @@ resources:
   - dashboards/product-activity.yml
   - dashboards/product-telemetry.yml
   - dashboards/joutio-services.yml
+  - dashboards/loadtest.yml
   - grafana-datasources.yml

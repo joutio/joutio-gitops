@@ -57,6 +57,12 @@ spec:
             - secretRef:
                 name: joutio-identity-facebook
                 optional: true
+            # Joueurs synthétiques des tests de charge (JOUTIO_LOADTEST_EMAIL_DOMAIN/CODE).
+            # Absent hors campagne : créé/supprimé par `stress-test/bin/campaign.sh <env> enable|disable`
+            # (workspace), jamais commité ; un rollout restart applique l'activation/désactivation.
+            - secretRef:
+                name: joutio-identity-loadtest
+                optional: true
           resources:
             requests:
               cpu: 150m

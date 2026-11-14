@@ -40,6 +40,9 @@ spec:
             retention: 7d
             retentionSize: 4GB
             scrapeInterval: 30s
+            # Réception des métriques k6 (`-o experimental-prometheus-rw`) pendant les campagnes de
+            # charge, via port-forward uniquement (aucun ingress) : dashboard `loadtest`.
+            enableRemoteWriteReceiver: true
             # Les ServiceMonitor/PodMonitor/Probe/PrometheusRule sont découverts dans TOUS
             # les namespaces : les services Joutio vivent dans `joutio-prod`.
             serviceMonitorSelectorNilUsesHelmValues: false
