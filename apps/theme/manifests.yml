@@ -102,3 +102,7 @@ data:
   # URL publique du serveur OpenAPI (acces via le gateway).
   MICROSERVICE_SWAGGER_SERVER_URL: https://api.joutio.com/theme-service
   JOUTIO_SEED_DATA_ENABLED: "true"
+  # Cadence du seed (app.seed-data.pacing.*) : pause apres chaque question = duree de ses commandes x ratio.
+  JOUTIO_SEED_START_DELAY: "60s"
+  JOUTIO_SEED_DUTY_RATIO: "1.0"
+  JOUTIO_SEED_TOPIC_PAUSE: "5s"
