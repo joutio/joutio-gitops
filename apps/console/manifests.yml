@@ -22,6 +22,18 @@ spec:
     spec:
       imagePullSecrets:
         - name: ghcr-pull
+      # Répartition de la charge (2026-11-14) : pi-node1 porte déjà Postgres, Kafka, Prometheus et le plan de contrôle
+      # (volumes locaux épinglés) ; les JVM sans état préfèrent pi-node2 (soft : un nœud seul reste schedulable).
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 80
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - pi-node1
       containers:
         - name: joutio-console
           image: ghcr.io/joutio/console:1.0.0
