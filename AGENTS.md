@@ -28,6 +28,8 @@ Apps : `bff`, `identity`, `theme`, `social`, `matchmaking`, `profile`, `game`, `
   Axon portent `app.kubernetes.io/component: axon` ; la console n'en a pas, car elle n'a pas de
   runtime Axon.
 - Un Deployment piloté par HPA ne fixe pas `replicas`.
+- matchmaking et game : 2 `replicas` fixes, `pdb.yml`, étalement par nœud. Leurs segments Axon sont
+  répartis par le SDK : ne pas leur ajouter de HPA sans revoir `joutio.axon.processors`.
 - Sondes tolérantes à la saturation sur tous les services. Ne pas les resserrer sans mesure.
 - Les tags d'image sont écrits par Image Updater (git write-back) : ne pas les éditer à la main.
 - Un nouveau service exige :

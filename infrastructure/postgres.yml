@@ -38,7 +38,7 @@ spec:
         - name: postgres
           image: postgres:16-alpine
           imagePullPolicy: IfNotPresent
-          # max_connections=150 : 7 bases applicatives x pool Hikari (5) + marge.
+          # max_connections=150 : pods Java au maximum (16 avec les HPA) x pool Hikari (5) + marge.
           args:
             - -c
             - max_connections=150
