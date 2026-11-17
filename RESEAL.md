@@ -1,8 +1,7 @@
 # Re-scellement des secrets Joutio
 
-Statut : **re-scellé pour `joutio-prod` le 2026-10-27**. Les valeurs ont été régénérées
-pour la mise en production Joutio (sauf Google/Resend, déjà rotationnés côté fournisseur,
-et sauf le token Telegram et le token GHCR qui viennent de leurs fournisseurs).
+Procédure de (re)scellement de tous les secrets du namespace `joutio-prod`. Les jetons Telegram,
+GHCR, Google et Resend viennent de leurs fournisseurs ; les autres valeurs sont générées.
 
 ## Source de vérité locale
 
@@ -117,8 +116,6 @@ done
 - **Grafana** : après application de `monitoring/secrets`, redémarrer le Deployment
   Grafana pour qu'il prenne le nouveau mot de passe admin et le nouveau client secret
   OIDC.
-- **Ancien stack** : l'ancien namespace de production reste en place jusqu'à la validation
-  complète de `joutio-prod`.
 
 ## Fichiers concernés
 

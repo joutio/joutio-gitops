@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Reset « base saine » de la prod Joutio : purge Postgres + Kafka (volumes neufs),
-# reconstruit l'infra vierge (8 bases + Kafka vide) puis resynchronise les applications
+# reconstruit l'infra vierge (une base par service + Kafka vide) puis resynchronise les applications
 # (Flyway + seeders idempotents).
 #
 # EFFACE TOUTES LES DONNÉES (comptes, parties, follows, classements, activité,
@@ -157,7 +157,7 @@ EOF
 
 publish_seed_images() {
   # Le bucket vient d'être vidé : on republie les images mirorées du seed depuis le workspace
-  # (`scripts/seed-images.py publish`, boto3 + fichier de `product/wikipedia/`).
+  # (`scripts/seed-images.py publish`, boto3 + contenu de `minio/joutio-media/`).
   local default_script script
   default_script="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)/scripts/seed-images.py"
   script="${SEED_IMAGES_SCRIPT:-${default_script}}"
@@ -203,7 +203,7 @@ if [[ "${MEDIA}" == "true" ]]; then
   purge_media || true
 fi
 
-log "4/8 Recréation de l'infra (Postgres vierge + 8 bases, Kafka vide)"
+log "4/8 Recréation de l'infra (Postgres vierge + une base par service, Kafka vide)"
 argocd_sync joutio-infrastructure
 wait_synced joutio-infrastructure 300 || true
 
