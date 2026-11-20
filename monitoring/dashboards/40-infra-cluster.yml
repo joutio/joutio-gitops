@@ -254,7 +254,7 @@ data:
         {
           "type": "timeseries",
           "title": "Charge 1/5/15 min et cœurs",
-          "description": "Le load average Linux compte aussi les tâches en attente disque (état D) : comparer avec iowait et la pression IO.",
+          "description": "Le load average Linux compte aussi les tâches en attente disque (état D) : comparer avec iowait.",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
@@ -352,96 +352,6 @@ data:
         },
         {
           "type": "timeseries",
-          "title": "Pression (PSI) : part du temps où des tâches attendent",
-          "description": "",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${datasource}"
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "expr": "sum by (nodename) (rate(node_pressure_cpu_waiting_seconds_total[5m]) * on (instance) group_left (nodename) node_uname_info{nodename=~\"$node\"})",
-              "legendFormat": "{{nodename}} CPU"
-            },
-            {
-              "refId": "B",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "expr": "sum by (nodename) (rate(node_pressure_memory_waiting_seconds_total[5m]) * on (instance) group_left (nodename) node_uname_info{nodename=~\"$node\"})",
-              "legendFormat": "{{nodename}} mémoire"
-            },
-            {
-              "refId": "C",
-              "datasource": {
-                "type": "prometheus",
-                "uid": "${datasource}"
-              },
-              "expr": "sum by (nodename) (rate(node_pressure_io_waiting_seconds_total[5m]) * on (instance) group_left (nodename) node_uname_info{nodename=~\"$node\"})",
-              "legendFormat": "{{nodename}} IO"
-            }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "percentunit",
-              "custom": {
-                "drawStyle": "line",
-                "lineWidth": 1,
-                "fillOpacity": 10,
-                "showPoints": "never",
-                "spanNulls": false,
-                "stacking": {
-                  "mode": "none",
-                  "group": "A"
-                }
-              },
-              "min": 0,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  {
-                    "color": "green",
-                    "value": null
-                  }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "table",
-              "placement": "bottom",
-              "calcs": [
-                "mean",
-                "max",
-                "lastNotNull"
-              ],
-              "showLegend": true,
-              "sortBy": "Max",
-              "sortDesc": true
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "id": 4,
-          "gridPos": {
-            "x": 0,
-            "y": 9,
-            "w": 12,
-            "h": 8
-          }
-        },
-        {
-          "type": "timeseries",
           "title": "Changements de contexte et interruptions /s",
           "description": "Beaucoup de threads qui se réveillent pour rien (polling) font monter les context switches sans CPU utile.",
           "datasource": {
@@ -513,9 +423,9 @@ data:
               "sort": "desc"
             }
           },
-          "id": 5,
+          "id": 4,
           "gridPos": {
-            "x": 12,
+            "x": 0,
             "y": 9,
             "w": 12,
             "h": 8
@@ -612,10 +522,10 @@ data:
               "sort": "desc"
             }
           },
-          "id": 6,
+          "id": 5,
           "gridPos": {
-            "x": 0,
-            "y": 17,
+            "x": 12,
+            "y": 9,
             "w": 12,
             "h": 8
           }
@@ -729,9 +639,9 @@ data:
               "sort": "desc"
             }
           },
-          "id": 7,
+          "id": 6,
           "gridPos": {
-            "x": 12,
+            "x": 0,
             "y": 17,
             "w": 12,
             "h": 8
@@ -802,10 +712,10 @@ data:
               "sort": "desc"
             }
           },
-          "id": 8,
+          "id": 7,
           "gridPos": {
-            "x": 0,
-            "y": 25,
+            "x": 12,
+            "y": 17,
             "w": 8,
             "h": 8
           }
@@ -883,9 +793,9 @@ data:
               "sort": "desc"
             }
           },
-          "id": 9,
+          "id": 8,
           "gridPos": {
-            "x": 8,
+            "x": 0,
             "y": 25,
             "w": 8,
             "h": 8
@@ -955,9 +865,9 @@ data:
               "sort": "desc"
             }
           },
-          "id": 10,
+          "id": 9,
           "gridPos": {
-            "x": 16,
+            "x": 8,
             "y": 25,
             "w": 8,
             "h": 8
@@ -1039,10 +949,10 @@ data:
               "sort": "desc"
             }
           },
-          "id": 11,
+          "id": 10,
           "gridPos": {
-            "x": 0,
-            "y": 33,
+            "x": 16,
+            "y": 25,
             "w": 8,
             "h": 8
           }
@@ -1119,9 +1029,9 @@ data:
               "sort": "desc"
             }
           },
-          "id": 12,
+          "id": 11,
           "gridPos": {
-            "x": 8,
+            "x": 0,
             "y": 33,
             "w": 8,
             "h": 8
@@ -1191,16 +1101,16 @@ data:
               "sort": "desc"
             }
           },
-          "id": 13,
+          "id": 12,
           "gridPos": {
-            "x": 16,
+            "x": 8,
             "y": 33,
             "w": 8,
             "h": 8
           }
         },
         {
-          "id": 14,
+          "id": 13,
           "type": "row",
           "title": "Qui consomme ? (pods)",
           "collapsed": false,
@@ -1276,7 +1186,7 @@ data:
               "sort": "desc"
             }
           },
-          "id": 15,
+          "id": 14,
           "gridPos": {
             "x": 0,
             "y": 42,
@@ -1348,7 +1258,7 @@ data:
               "sort": "desc"
             }
           },
-          "id": 16,
+          "id": 15,
           "gridPos": {
             "x": 12,
             "y": 42,
@@ -1420,7 +1330,7 @@ data:
               "sort": "desc"
             }
           },
-          "id": 17,
+          "id": 16,
           "gridPos": {
             "x": 0,
             "y": 50,
@@ -1492,7 +1402,7 @@ data:
               "sort": "desc"
             }
           },
-          "id": 18,
+          "id": 17,
           "gridPos": {
             "x": 12,
             "y": 50,
@@ -1666,7 +1576,7 @@ data:
               }
             ]
           },
-          "id": 19,
+          "id": 18,
           "gridPos": {
             "x": 0,
             "y": 60,
@@ -1760,7 +1670,7 @@ data:
               "sort": "desc"
             }
           },
-          "id": 20,
+          "id": 19,
           "gridPos": {
             "x": 0,
             "y": 72,
@@ -1832,7 +1742,7 @@ data:
               "sort": "desc"
             }
           },
-          "id": 21,
+          "id": 20,
           "gridPos": {
             "x": 12,
             "y": 72,
@@ -1913,7 +1823,7 @@ data:
               "sort": "desc"
             }
           },
-          "id": 22,
+          "id": 21,
           "gridPos": {
             "x": 0,
             "y": 80,
@@ -1985,7 +1895,7 @@ data:
               "sort": "desc"
             }
           },
-          "id": 23,
+          "id": 22,
           "gridPos": {
             "x": 12,
             "y": 80,

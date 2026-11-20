@@ -976,7 +976,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(otelcol_receiver_accepted_spans_total[5m]))",
+              "expr": "sum(rate(otelcol_receiver_accepted_spans[5m]))",
               "legendFormat": "acceptés"
             },
             {
@@ -985,7 +985,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(otelcol_receiver_refused_spans_total[5m]))",
+              "expr": "sum(rate(otelcol_receiver_refused_spans[5m])) or vector(0)",
               "legendFormat": "refusés (503)"
             },
             {
@@ -994,7 +994,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum(rate(otelcol_exporter_send_failed_spans_total[5m]))",
+              "expr": "sum(rate(otelcol_exporter_send_failed_spans[5m])) or vector(0)",
               "legendFormat": "échecs d'export"
             }
           ],
