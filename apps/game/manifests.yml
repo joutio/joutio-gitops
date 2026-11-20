@@ -8,9 +8,10 @@ metadata:
     app.kubernetes.io/component: axon
     app: joutio-game
 spec:
-  # 2 réplicas fixes : les groupes chauds sont segmentés et répartis entre pods par le
-  # rééquilibreur du SDK (joutio.axon.processors) ; un pod seul reprend tous les segments.
-  replicas: 2
+  # 1 réplique : ses groupes chauds sont segmentés (un thread par segment dans le pod). Sur 2 nœuds,
+  # un 2ᵉ pod n'ajoute aucun CPU et coûte un saut de publication Kafka entre pods (campagne #9).
+  # Le code multi-répliques (rééquilibreur, routage) reste prêt pour un cluster plus grand.
+  replicas: 1
   strategy:
     type: RollingUpdate
     rollingUpdate:

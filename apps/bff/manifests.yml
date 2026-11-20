@@ -67,9 +67,12 @@ spec:
             limits:
               cpu: "1"
               memory: 1Gi
+          # Sondes dédiées : la readiness attend que les groupes instance-scopés (fan-out STOMP) aient
+          # rattrapé le flux Kafka, sinon un pod ajouté pousse ses notifications ~30 s en retard
+          # (campagne #9). Startup et liveness n'en dépendent pas : un rattrapage lent ne tue pas le pod.
           startupProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/liveness
               port: 8080
             failureThreshold: 60
             periodSeconds: 5
@@ -78,7 +81,7 @@ spec:
           # (exit 137), ce qui perd les requêtes en vol (joins de salle).
           readinessProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/readiness
               port: 8080
             initialDelaySeconds: 20
             periodSeconds: 10
@@ -86,7 +89,7 @@ spec:
             failureThreshold: 6
           livenessProbe:
             httpGet:
-              path: /actuator/health
+              path: /actuator/health/liveness
               port: 8080
             initialDelaySeconds: 40
             periodSeconds: 10

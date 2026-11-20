@@ -3,7 +3,6 @@ kind: Kustomization
 namespace: joutio-prod
 resources:
   - manifests.yml
-  - pdb.yml
   - sealed-secret.yml
 images:
   - name: ghcr.io/joutio/matchmaking

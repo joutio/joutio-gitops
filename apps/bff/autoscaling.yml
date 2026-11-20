@@ -11,8 +11,9 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: joutio-bff
-  # Min 2 : un pod peut tomber (rollout nœud) sans couper toutes les sessions STOMP.
-  minReplicas: 2
+  # Min 1 au repos (sobriété) : un rollout reste sans coupure (maxSurge), la perte du nœud du pod
+  # coupe les sessions STOMP le temps de le replanifier.
+  minReplicas: 1
   maxReplicas: 3
   metrics:
     - type: Resource
