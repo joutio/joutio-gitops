@@ -29,14 +29,19 @@ spec:
     spec:
       imagePullSecrets:
         - name: ghcr-pull
-      # Répartit les réplicas sur les 2 nœuds (soft : un nœud seul reste schedulable).
-      topologySpreadConstraints:
-        - maxSkew: 1
-          topologyKey: kubernetes.io/hostname
-          whenUnsatisfiable: ScheduleAnyway
-          labelSelector:
-            matchLabels:
-              app: joutio-game
+      # Services hors du nœud des données (Postgres, Kafka) : il sature le premier sous charge
+      # (campagne #9). Préférence seulement : si l'autre nœud n'a plus de place, on y retourne.
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: [postgres, kafka]
       containers:
         - name: joutio-game
           image: ghcr.io/joutio/game:1.0.0
@@ -55,7 +60,7 @@ spec:
                 name: joutio-game-secret
           resources:
             requests:
-              cpu: 150m
+              cpu: 200m
               memory: 448Mi
             limits:
               cpu: "1"

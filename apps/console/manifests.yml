@@ -22,6 +22,19 @@ spec:
     spec:
       imagePullSecrets:
         - name: ghcr-pull
+      # Services hors du nœud des données (Postgres, Kafka) : il sature le premier sous charge
+      # (campagne #9). Préférence seulement : si l'autre nœud n'a plus de place, on y retourne.
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                topologyKey: kubernetes.io/hostname
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values: [postgres, kafka]
       containers:
         - name: joutio-console
           image: ghcr.io/joutio/console:1.0.0
@@ -40,7 +53,7 @@ spec:
                 name: joutio-console-secret
           resources:
             requests:
-              cpu: 100m
+              cpu: 50m
               memory: 384Mi
             limits:
               cpu: "1"
