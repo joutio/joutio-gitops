@@ -22,8 +22,15 @@ spec:
           type: Utilization
           averageUtilization: 70
   behavior:
+    # Le démarrage d'un pod (Spring, Hibernate, Axon) consomme 5 à 7 fois sa request CPU pendant
+    # ~4 min : sans fenêtre, chaque déploiement montait au maximum de réplicas. On ne monte que sur
+    # une charge tenue 5 min, d'un pod toutes les 2 min.
     scaleUp:
-      stabilizationWindowSeconds: 0
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 120
     scaleDown:
       # Le scale-down ferme les sessions STOMP du pod retiré (reconnexion + folds REST) :
       # fenêtre longue pour ne le faire que sous charge durablement basse.
