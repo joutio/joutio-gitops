@@ -41,7 +41,12 @@ spec:
           # max_connections=150 : pods Java au maximum (16 avec les HPA) x pool Hikari (5) + marge.
           # pg_stat_statements : requêtes par appels et par temps, lues par postgres-exporter
           # (dashboard `41-infra-data`) ; l'extension est créée par le Job `postgres-extensions`.
+          # plan_cache_mode=force_custom_plan : le polling de l'event store d'Axon (`global_index > $1 OR IN (gaps)`)
+          # arrive en requête préparée ; en plan générique Postgres parcourt tout l'index (55 ms au lieu de 0,3 ms,
+          # 0,49 cœur au repos, campagne #10).
           args:
+            - -c
+            - plan_cache_mode=force_custom_plan
             - -c
             - max_connections=150
             - -c
