@@ -1167,7 +1167,7 @@ data:
         },
         {
           "type": "timeseries",
-          "title": "Consumers créés /min",
+          "title": "Consumers ouverts /min (cumul)",
           "description": "Doit rester à 0 hors démarrage : une pente révèle des ouvertures en boucle (tokens de tête, reconnexions).",
           "datasource": {
             "type": "prometheus",
@@ -1180,7 +1180,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "60 * sum by (pod) (rate(joutio_axon_kafka_consumers_created_total{application=~\"$application\", pod=~\"$pod\"}[5m]))",
+              "expr": "60 * sum by (pod) (rate(joutio_axon_kafka_consumers_opened_total{application=~\"$application\", pod=~\"$pod\"}[5m]))",
               "legendFormat": "{{pod}}"
             }
           ],
@@ -1252,7 +1252,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum by (pod) (rate(kafka_consumer_request_total{application=~\"$application\", pod=~\"$pod\"}[5m]))",
+              "expr": "sum by (pod) (rate(kafka_consumer_request_total{kafka_version!=\"unknown\", application=~\"$application\", pod=~\"$pod\"}[5m]))",
               "legendFormat": "{{pod}}"
             }
           ],
@@ -1324,7 +1324,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum by (pod) (rate(kafka_consumer_fetch_manager_fetch_total{application=~\"$application\", pod=~\"$pod\"}[5m]))",
+              "expr": "sum by (pod) (rate(kafka_consumer_fetch_manager_fetch_total{kafka_version!=\"unknown\", application=~\"$application\", pod=~\"$pod\"}[5m]))",
               "legendFormat": "{{pod}}"
             }
           ],
@@ -1396,7 +1396,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum by (pod) (rate(kafka_consumer_fetch_manager_records_consumed_total{application=~\"$application\", pod=~\"$pod\"}[5m]))",
+              "expr": "sum by (pod) (rate(kafka_consumer_fetch_manager_records_consumed_total{kafka_version!=\"unknown\", application=~\"$application\", pod=~\"$pod\"}[5m]))",
               "legendFormat": "{{pod}}"
             }
           ],
@@ -1468,7 +1468,7 @@ data:
                 "type": "prometheus",
                 "uid": "${datasource}"
               },
-              "expr": "sum by (pod) (rate(kafka_consumer_fetch_manager_bytes_consumed_total{application=~\"$application\", pod=~\"$pod\"}[5m]))",
+              "expr": "sum by (pod) (rate(kafka_consumer_fetch_manager_bytes_consumed_total{kafka_version!=\"unknown\", application=~\"$application\", pod=~\"$pod\"}[5m]))",
               "legendFormat": "{{pod}}"
             }
           ],
