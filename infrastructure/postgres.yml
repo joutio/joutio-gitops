@@ -39,9 +39,17 @@ spec:
           image: postgres:16-alpine
           imagePullPolicy: IfNotPresent
           # max_connections=150 : pods Java au maximum (16 avec les HPA) x pool Hikari (5) + marge.
+          # pg_stat_statements : requêtes par appels et par temps, lues par postgres-exporter
+          # (dashboard `41-infra-data`) ; l'extension est créée par le Job `postgres-extensions`.
           args:
             - -c
             - max_connections=150
+            - -c
+            - shared_preload_libraries=pg_stat_statements
+            - -c
+            - pg_stat_statements.track=all
+            - -c
+            - pg_stat_statements.max=2000
           envFrom:
             - configMapRef:
                 name: joutio-infra-config
@@ -84,3 +92,40 @@ spec:
         resources:
           requests:
             storage: 10Gi
+---
+# Extensions de la base `postgres` (celle de postgres-exporter), idempotent à chaque sync.
+# Les scripts d'init ne tournent qu'à la création du volume : ce Job couvre les bases existantes.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: postgres-extensions
+  namespace: joutio-prod
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 6
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: psql
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          command:
+            - psql
+            - --host=postgres
+            - --dbname=postgres
+            - --set=ON_ERROR_STOP=1
+            - --command=CREATE EXTENSION IF NOT EXISTS pg_stat_statements
+          env:
+            - name: PGUSER
+              valueFrom:
+                configMapKeyRef:
+                  name: joutio-infra-config
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: joutio-infra-secret
+                  key: POSTGRES_PASSWORD

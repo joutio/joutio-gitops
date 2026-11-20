@@ -8,6 +8,32 @@ metadata:
     app.kubernetes.io/part-of: joutio
 spec:
   groups:
+    # Recording rules utilisées par les dashboards (et les alertes HTTP à venir) : trafic joueur
+    # sans `/actuator` (sondes et scrapes faussent taux d'erreur et p95). CPU et mémoire par
+    # conteneur : règles du chart (`node_namespace_pod_container:*`), avec le label `node`.
+    - name: joutio.recording
+      interval: 30s
+      rules:
+        - record: http:requests:rate5m
+          expr: sum by (application, pod, uri, method, status, outcome) (rate(http_server_requests_seconds_count{namespace="joutio-prod", uri!~"/actuator.*"}[5m]))
+        - record: http:requests_seconds_bucket:rate5m
+          expr: sum by (application, uri, le) (rate(http_server_requests_seconds_bucket{namespace="joutio-prod", uri!~"/actuator.*"}[5m]))
+        - record: application:http_requests:rate5m
+          expr: sum by (application) (rate(http_server_requests_seconds_count{namespace="joutio-prod", uri!~"/actuator.*"}[5m]))
+        - record: application:http_errors:rate5m
+          expr: sum by (application) (rate(http_server_requests_seconds_count{namespace="joutio-prod", uri!~"/actuator.*", outcome="SERVER_ERROR"}[5m]))
+        - record: application:http_requests:rate30m
+          expr: sum by (application) (rate(http_server_requests_seconds_count{namespace="joutio-prod", uri!~"/actuator.*"}[30m]))
+        - record: application:http_errors:rate30m
+          expr: sum by (application) (rate(http_server_requests_seconds_count{namespace="joutio-prod", uri!~"/actuator.*", outcome="SERVER_ERROR"}[30m]))
+        - record: application:http_requests:rate1h
+          expr: sum by (application) (rate(http_server_requests_seconds_count{namespace="joutio-prod", uri!~"/actuator.*"}[1h]))
+        - record: application:http_errors:rate1h
+          expr: sum by (application) (rate(http_server_requests_seconds_count{namespace="joutio-prod", uri!~"/actuator.*", outcome="SERVER_ERROR"}[1h]))
+        - record: application:http_requests:rate6h
+          expr: sum by (application) (rate(http_server_requests_seconds_count{namespace="joutio-prod", uri!~"/actuator.*"}[6h]))
+        - record: application:http_errors:rate6h
+          expr: sum by (application) (rate(http_server_requests_seconds_count{namespace="joutio-prod", uri!~"/actuator.*", outcome="SERVER_ERROR"}[6h]))
     - name: joutio.node
       rules:
         - alert: NodeDown

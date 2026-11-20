@@ -1,13 +1,17 @@
+# Campagnes de charge k6.
+# Le JSON ci-dessous est la source du dashboard : le modifier ici (un export Grafana se recolle tel quel).
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: grafana-dashboard-loadtest
+  name: grafana-dashboard-90-loadtest
   namespace: monitoring
   labels:
     grafana_dashboard: "1"
     app.kubernetes.io/part-of: joutio
+  annotations:
+    grafana_folder: "Tests"
 data:
-  loadtest.json: |
+  90-loadtest.json: |
     {
       "annotations": {
         "list": []
@@ -20,7 +24,7 @@ data:
         "joutio",
         "loadtest"
       ],
-      "title": "Joutio — Test de charge",
+      "title": "90 · Test de charge",
       "uid": "joutio-loadtest",
       "version": 1,
       "time": {
@@ -31,12 +35,24 @@ data:
       "templating": {
         "list": [
           {
+            "name": "datasource",
+            "label": "Source",
+            "type": "datasource",
+            "query": "prometheus",
+            "current": {
+              "text": "Prometheus",
+              "value": "prometheus"
+            },
+            "hide": 0,
+            "refresh": 1
+          },
+          {
             "name": "run",
             "label": "Campagne",
             "type": "query",
             "datasource": {
               "type": "prometheus",
-              "uid": "prometheus"
+              "uid": "${datasource}"
             },
             "query": {
               "query": "label_values(k6_vus, run)",
@@ -75,7 +91,7 @@ data:
           "title": "Utilisateurs virtuels",
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "gridPos": {
             "h": 8,
@@ -122,7 +138,7 @@ data:
           "title": "Requêtes /s par route (top 12)",
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "gridPos": {
             "h": 8,
@@ -164,7 +180,7 @@ data:
           "title": "Échecs HTTP",
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "gridPos": {
             "h": 8,
@@ -206,7 +222,7 @@ data:
           "title": "Latence HTTP p95 par route (top 12)",
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "gridPos": {
             "h": 8,
@@ -248,7 +264,7 @@ data:
           "title": "Erreurs de parcours",
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "gridPos": {
             "h": 8,
@@ -308,7 +324,7 @@ data:
           "title": "Préparation de salle p95 (room-saga)",
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "gridPos": {
             "h": 8,
@@ -351,7 +367,7 @@ data:
           "title": "Appariement p95",
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "gridPos": {
             "h": 8,
@@ -394,7 +410,7 @@ data:
           "title": "Inscription → profil p95 (saga profil)",
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "gridPos": {
             "h": 8,
@@ -437,7 +453,7 @@ data:
           "title": "Dérive des rounds p95 (deadlines)",
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "gridPos": {
             "h": 8,
@@ -480,7 +496,7 @@ data:
           "title": "Réponse → écho STOMP p95",
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "gridPos": {
             "h": 8,
@@ -523,7 +539,7 @@ data:
           "title": "Latence de push p95",
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "gridPos": {
             "h": 8,
@@ -571,7 +587,7 @@ data:
           "title": "Duels terminés / appariements humains",
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "gridPos": {
             "h": 8,
@@ -620,7 +636,7 @@ data:
           "title": "WebSocket et présence : incidents /s",
           "datasource": {
             "type": "prometheus",
-            "uid": "prometheus"
+            "uid": "${datasource}"
           },
           "gridPos": {
             "h": 8,
@@ -672,452 +688,34 @@ data:
           ]
         },
         {
-          "id": 16,
-          "type": "row",
+          "type": "text",
           "title": "Cluster sous charge",
-          "collapsed": false,
           "gridPos": {
-            "h": 1,
+            "x": 0,
+            "y": 42,
             "w": 24,
-            "x": 0,
-            "y": 42
-          },
-          "panels": []
-        },
-        {
-          "id": 17,
-          "type": "timeseries",
-          "title": "CPU par nœud",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 0,
-            "y": 43
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "percent",
-              "custom": {
-                "fillOpacity": 10,
-                "lineWidth": 1
-              },
-              "max": 100,
-              "min": 0
-            },
-            "overrides": []
+            "h": 3
           },
           "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
+            "mode": "markdown",
+            "content": "Pendant une campagne, garder la même plage de temps et ouvrir : [40 · Infra — cluster](/d/joutio-infra-cluster) (CPU par nœud et par pod, HPA), [20 · Axon](/d/joutio-axon) (processors, lag, commandes p95), [41 · Infra — données](/d/joutio-infra-data) (connexions et requêtes Postgres, Kafka), [10 · Service](/d/joutio-service) (JVM, Hikari)."
           },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "(1 - avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[1m]))) * 100",
-              "legendFormat": "{{instance}}"
-            }
-          ]
-        },
-        {
-          "id": 18,
-          "type": "timeseries",
-          "title": "Température CPU (Pi)",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 8,
-            "y": 43
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "celsius",
-              "custom": {
-                "fillOpacity": 10,
-                "lineWidth": 1
-              }
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "pi_cpu_temperature_celsius",
-              "legendFormat": "{{instance}}"
-            }
-          ]
-        },
-        {
-          "id": 19,
-          "type": "timeseries",
-          "title": "CPU par service (cœurs)",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 16,
-            "y": 43
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "custom": {
-                "fillOpacity": 10,
-                "lineWidth": 1
-              }
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "sum by (pod) (rate(container_cpu_usage_seconds_total{namespace=~\"joutio-prod|monitoring\", container!=\"\", container!=\"POD\"}[1m])) > 0.05",
-              "legendFormat": "{{pod}}"
-            }
-          ]
-        },
-        {
-          "id": 20,
-          "type": "timeseries",
-          "title": "Réplicas HPA",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 0,
-            "y": 51
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "custom": {
-                "fillOpacity": 10,
-                "lineWidth": 1
-              }
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "kube_horizontalpodautoscaler_status_current_replicas{namespace=\"joutio-prod\"}",
-              "legendFormat": "{{horizontalpodautoscaler}}"
-            }
-          ]
-        },
-        {
-          "id": 21,
-          "type": "timeseries",
-          "title": "Connexions Postgres",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 8,
-            "y": 51
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "custom": {
-                "fillOpacity": 10,
-                "lineWidth": 1
-              }
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "sum by (datname) (pg_stat_activity_count)",
-              "legendFormat": "{{datname}}"
-            },
-            {
-              "refId": "B",
-              "expr": "sum(pg_stat_activity_count)",
-              "legendFormat": "total"
-            }
-          ],
-          "description": "Alerte à 120/150."
-        },
-        {
-          "id": 22,
-          "type": "timeseries",
-          "title": "Lag Kafka par consumer group",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 8,
-            "x": 16,
-            "y": 51
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "custom": {
-                "fillOpacity": 10,
-                "lineWidth": 1
-              }
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "sum by (consumergroup) (kafka_consumergroup_lag) > 0",
-              "legendFormat": "{{consumergroup}}"
-            }
-          ]
-        },
-        {
-          "id": 23,
-          "type": "timeseries",
-          "title": "Événements Axon traités /s (top 10 processors)",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 59
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "ops",
-              "custom": {
-                "fillOpacity": 10,
-                "lineWidth": 1
-              }
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "topk(10, sum by (processor) (rate(joutio_axon_events_processed_total[1m])))",
-              "legendFormat": "{{processor}}"
-            }
-          ]
-        },
-        {
-          "id": 24,
-          "type": "timeseries",
-          "title": "Processors en retard / en erreur",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 59
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "custom": {
-                "fillOpacity": 10,
-                "lineWidth": 1
-              }
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "min by (application, processor) (joutio_axon_console_processor_caught_up) < 1",
-              "legendFormat": "retard {{processor}}"
-            },
-            {
-              "refId": "B",
-              "expr": "max by (application, processor) (joutio_axon_event_processor_error) > 0",
-              "legendFormat": "erreur {{processor}}"
-            }
-          ]
-        },
-        {
-          "id": 25,
-          "type": "timeseries",
-          "title": "Commandes Axon p95 par service",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 0,
-            "y": 67
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "s",
-              "custom": {
-                "fillOpacity": 10,
-                "lineWidth": 1
-              }
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "histogram_quantile(0.95, sum by (le, application) (rate(joutio_axon_command_duration_seconds_bucket[1m])))",
-              "legendFormat": "{{application}}"
-            }
-          ]
-        },
-        {
-          "id": 26,
-          "type": "timeseries",
-          "title": "Heap JVM utilisée",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "gridPos": {
-            "h": 8,
-            "w": 12,
-            "x": 12,
-            "y": 67
-          },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "percentunit",
-              "custom": {
-                "fillOpacity": 10,
-                "lineWidth": 1
-              },
-              "max": 1,
-              "min": 0
-            },
-            "overrides": []
-          },
-          "options": {
-            "legend": {
-              "displayMode": "list",
-              "placement": "bottom"
-            },
-            "tooltip": {
-              "mode": "multi",
-              "sort": "desc"
-            }
-          },
-          "targets": [
-            {
-              "refId": "A",
-              "expr": "sum by (application) (jvm_memory_used_bytes{area=\"heap\"}) / sum by (application) (jvm_memory_max_bytes{area=\"heap\"})",
-              "legendFormat": "{{application}}"
-            }
-          ]
+          "id": 16
         }
-      ]
+      ],
+      "links": [
+        {
+          "title": "Dashboards Joutio",
+          "type": "dashboards",
+          "tags": [
+            "joutio"
+          ],
+          "asDropdown": true,
+          "includeVars": false,
+          "keepTime": true,
+          "targetBlank": false,
+          "icon": "external link"
+        }
+      ],
+      "description": "Campagnes k6 (remote write) : charge injectée et signaux d'architecture."
     }

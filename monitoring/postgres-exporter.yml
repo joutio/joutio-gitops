@@ -18,8 +18,15 @@ spec:
     spec:
       containers:
         - name: postgres-exporter
-          image: quay.io/prometheuscommunity/postgres-exporter:v0.16.0
+          image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
           imagePullPolicy: IfNotPresent
+          # stat_statements : top 100 requêtes par temps cumulé, texte compris (dashboard `41-infra-data`).
+          # Exige pg_stat_statements dans la base `postgres` (Job `postgres-extensions`).
+          args:
+            - --collector.stat_statements
+            - --collector.stat_statements.include_query
+            - --collector.stat_statements.query_length=200
+            - --collector.stat_statements.limit=100
           env:
             - name: DATA_SOURCE_URI
               value: postgres.joutio-prod.svc.cluster.local:5432/postgres?sslmode=disable

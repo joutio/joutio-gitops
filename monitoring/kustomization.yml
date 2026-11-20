@@ -9,14 +9,15 @@ resources:
   - alertmanager-config.yml
   - kafka-exporter.yml
   - postgres-exporter.yml
-  - dashboards/joutio-overview.yml
-  - dashboards/pi-node.yml
-  - dashboards/logs.yml
-  - dashboards/slo.yml
-  - dashboards/axon-activity.yml
-  - dashboards/monitoring-stack.yml
-  - dashboards/product-activity.yml
-  - dashboards/product-telemetry.yml
-  - dashboards/joutio-services.yml
-  - dashboards/loadtest.yml
+  - dashboards/00-overview.yml
+  - dashboards/01-slo.yml
+  - dashboards/10-service.yml
+  - dashboards/11-bff-realtime.yml
+  - dashboards/20-axon.yml
+  - dashboards/30-product.yml
+  - dashboards/40-infra-cluster.yml
+  - dashboards/41-infra-data.yml
+  - dashboards/42-infra-observability.yml
+  - dashboards/50-logs.yml
+  - dashboards/90-loadtest.yml
   - grafana-datasources.yml
