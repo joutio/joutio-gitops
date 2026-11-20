@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/part-of: joutio
 spec:
   groups:
-    # Recording rules utilisées par les dashboards (et les alertes HTTP à venir) : trafic joueur
+    # Recording rules utilisées par les dashboards et les alertes HTTP : trafic joueur
     # sans `/actuator` (sondes et scrapes faussent taux d'erreur et p95). CPU et mémoire par
     # conteneur : règles du chart (`node_namespace_pod_container:*`), avec le label `node`.
     - name: joutio.recording
@@ -141,30 +141,68 @@ spec:
           annotations:
             summary: "Service Joutio injoignable : {{ $labels.job }}"
             description: "Prometheus ne scrape plus {{ $labels.job }} depuis 2 min."
-        - alert: JoutioGatewayHighErrorRate
+        # Trafic joueur sans `/actuator` (recording rules `joutio.recording`), BFF en tête : seule surface joueur.
+        # SLO 99,5 % (dashboard `01 · SLO`) : burn rate rapide 14,4 (1h et 5m), lent 6 (6h et 30m).
+        - alert: JoutioSloFastBurn
           expr: |
-            (
-              sum(rate(http_server_requests_seconds_count{application="joutio-gateway", outcome="SERVER_ERROR"}[5m]))
-              /
-              sum(rate(http_server_requests_seconds_count{application="joutio-gateway"}[5m]))
-            ) > 0.05
+            (application:http_errors:rate1h / application:http_requests:rate1h) > (14.4 * 0.005)
+            and
+            (application:http_errors:rate5m / application:http_requests:rate5m) > (14.4 * 0.005)
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Budget d'erreur consommé vite : {{ $labels.application }}"
+            description: "Taux de 5xx au-dessus de 14,4 × le budget (SLO 99,5 %) sur 1h et 5 min : 2 % du budget mensuel brûlé en 1h."
+        - alert: JoutioSloSlowBurn
+          expr: |
+            (application:http_errors:rate6h / application:http_requests:rate6h) > (6 * 0.005)
+            and
+            (application:http_errors:rate30m / application:http_requests:rate30m) > (6 * 0.005)
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Budget d'erreur consommé en continu : {{ $labels.application }}"
+            description: "Taux de 5xx au-dessus de 6 × le budget (SLO 99,5 %) sur 6h et 30 min."
+        - alert: JoutioHttpErrorRateHigh
+          expr: |
+            (application:http_errors:rate5m / application:http_requests:rate5m) > 0.05
+            and application:http_requests:rate5m > 0.1
           for: 5m
           labels:
             severity: warning
           annotations:
-            summary: "Taux d'erreur 5xx élevé sur le gateway"
-            description: "Plus de 5% des requêtes du gateway sont en erreur serveur."
-        - alert: JoutioGatewayHighLatency
+            summary: "Taux de 5xx élevé : {{ $labels.application }}"
+            description: "Plus de 5 % des requêtes (hors actuator) en erreur serveur depuis 5 min."
+        - alert: JoutioHttpLatencyHigh
           expr: |
             histogram_quantile(0.95,
-              sum by (le) (rate(http_server_requests_seconds_bucket{application="joutio-gateway"}[5m]))
+              sum by (application, le) (rate(http_server_requests_seconds_bucket{namespace="joutio-prod", uri!~"/actuator.*"}[5m]))
             ) > 1
+            and on (application) application:http_requests:rate5m > 0.1
           for: 10m
           labels:
             severity: warning
           annotations:
-            summary: "Latence p95 élevée sur le gateway"
-            description: "Le p95 des requêtes gateway dépasse 1s depuis 10 min."
+            summary: "Latence p95 élevée : {{ $labels.application }}"
+            description: "Le p95 des requêtes (hors actuator) dépasse 1 s depuis 10 min."
+        - alert: JoutioHikariPending
+          expr: max by (application, pod) (hikaricp_connections_pending{namespace="joutio-prod"}) > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Connexions Postgres en attente : {{ $labels.application }}"
+            description: "Des threads attendent une connexion Hikari depuis 5 min sur {{ $labels.pod }} (pool saturé ou écritures disque lentes)."
+        - alert: JoutioRoomFailures
+          expr: sum by (reason) (increase(joutio_room_failures_total[15m])) > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Échecs de préparation de salle : {{ $labels.reason }}"
+            description: "{{ $value | printf \"%.0f\" }} salles en échec en 15 min (matchmaking)."
         - alert: JoutioJvmHeapHigh
           expr: |
             (
@@ -236,15 +274,7 @@ spec:
           annotations:
             summary: "Nouvel utilisateur inscrit sur Joutio"
             description: "{{ $value }} inscription(s) détectée(s) sur les 5 dernières minutes."
-        - alert: JoutioUserLoggedIn
-          expr: |
-            increase(joutio_axon_events_published_total{
-              application="joutio-identity", name="UserLoggedInEvent"}[5m]) > 0
-          labels:
-            severity: info
-          annotations:
-            summary: "Nouvelle connexion à Joutio"
-            description: "{{ $value }} connexion(s) détectée(s) sur les 5 dernières minutes."
+
 
     - name: joutio.platform
       rules:
@@ -311,6 +341,27 @@ spec:
 
     - name: joutio.monitoring
       rules:
+        # Le collecteur refuse les spans (503 OTLP) quand son `memory_limiter` sature : traces perdues.
+        - alert: OtelCollectorRefusingSpans
+          expr: sum(rate(otelcol_receiver_refused_spans[5m])) > 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "otel-collector refuse des spans"
+            description: "Le collecteur répond 503 aux services depuis 10 min (mémoire saturée) : des traces sont perdues."
+        # `retentionSize: 4GB` : au-delà, Prometheus purge les plus vieux blocs avant les 7 j de rétention.
+        - alert: PrometheusStorageNearRetentionSize
+          expr: |
+            (prometheus_tsdb_storage_blocks_bytes + prometheus_tsdb_wal_storage_size_bytes
+              + prometheus_tsdb_head_chunks_storage_size_bytes) > 3.6e9
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Stockage Prometheus près de 4 Go"
+            description: "Le stockage TSDB dépasse 3,6 Go : la limite de 4 Go purgera l'historique avant 7 jours (réduire les séries ou agrandir)."
+
         # Les PVC `local-path` sont des hostPath : kubelet_volume_stats_* remonte les stats du
         # disque racine du Pi (partagé par tous les PVC), pas celles du PVC. Les alertes PVC
         # sont donc trompeuses (faux positifs sur le disque hôte). On alerte sur le disque
