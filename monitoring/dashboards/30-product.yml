@@ -481,7 +481,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum(increase(joutio_axon_events_published_total{application=\"joutio-matchmaking\", name=\"ChallengeCreatedEvent\"}[$__range]))",
+              "expr": "sum(increase(joutio_room_invitations_total{application=\"joutio-matchmaking\", outcome=\"SENT\"}[$__range]))",
               "instant": true
             }
           ]
@@ -527,7 +527,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum(increase(joutio_axon_events_published_total{application=\"joutio-matchmaking\", name=\"ChallengeAcceptedEvent\"}[$__range]))",
+              "expr": "sum(increase(joutio_room_invitations_total{application=\"joutio-matchmaking\", outcome=\"ACCEPTED\"}[$__range]))",
               "instant": true
             }
           ]
@@ -536,7 +536,7 @@ data:
           "id": 13,
           "type": "stat",
           "title": "Taux d'acceptation des défis",
-          "description": "ChallengeAcceptedEvent / ChallengeCreatedEvent sur la période.",
+          "description": "Défis acceptés / défis envoyés sur la période (joutio_room_invitations_total, revanches comprises).",
           "datasource": {
             "type": "prometheus",
             "uid": "${datasource}"
@@ -584,7 +584,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "(sum(increase(joutio_axon_events_published_total{application=\"joutio-matchmaking\", name=\"ChallengeAcceptedEvent\"}[$__range])) / clamp_min(sum(increase(joutio_axon_events_published_total{application=\"joutio-matchmaking\", name=\"ChallengeCreatedEvent\"}[$__range])), 1)) and (sum(increase(joutio_axon_events_published_total{application=\"joutio-matchmaking\", name=\"ChallengeCreatedEvent\"}[$__range])) > 0)",
+              "expr": "(sum(increase(joutio_room_invitations_total{application=\"joutio-matchmaking\", outcome=\"ACCEPTED\"}[$__range])) / clamp_min(sum(increase(joutio_room_invitations_total{application=\"joutio-matchmaking\", outcome=\"SENT\"}[$__range])), 1)) and (sum(increase(joutio_room_invitations_total{application=\"joutio-matchmaking\", outcome=\"SENT\"}[$__range])) > 0)",
               "instant": true
             }
           ]
@@ -634,7 +634,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum(increase(joutio_axon_events_published_total{application=\"joutio-matchmaking\", name=\"ChallengeCancelledEvent\"}[$__range]))",
+              "expr": "sum(increase(joutio_room_invitations_total{application=\"joutio-matchmaking\", outcome=\"CANCELLED\"}[$__range]))",
               "instant": true
             }
           ]
@@ -680,7 +680,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum(increase(joutio_axon_events_published_total{application=\"joutio-matchmaking\", name=\"ChallengeDeclinedEvent\"}[$__range]))",
+              "expr": "sum(increase(joutio_room_invitations_total{application=\"joutio-matchmaking\", outcome=\"DECLINED\"}[$__range]))",
               "instant": true
             }
           ]
@@ -726,7 +726,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum(increase(joutio_axon_events_published_total{application=\"joutio-matchmaking\", name=\"ChallengeExpiredEvent\"}[$__range]))",
+              "expr": "sum(increase(joutio_room_invitations_total{application=\"joutio-matchmaking\", outcome=\"EXPIRED\"}[$__range]))",
               "instant": true
             }
           ]
@@ -1783,27 +1783,27 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum(increase(joutio_axon_events_published_total{application=\"joutio-matchmaking\", name=\"ChallengeCreatedEvent\"}[1d]))",
+              "expr": "sum(increase(joutio_room_invitations_total{application=\"joutio-matchmaking\", outcome=\"SENT\"}[1d]))",
               "legendFormat": "créés"
             },
             {
               "refId": "B",
-              "expr": "sum(increase(joutio_axon_events_published_total{application=\"joutio-matchmaking\", name=\"ChallengeAcceptedEvent\"}[1d]))",
+              "expr": "sum(increase(joutio_room_invitations_total{application=\"joutio-matchmaking\", outcome=\"ACCEPTED\"}[1d]))",
               "legendFormat": "acceptés"
             },
             {
               "refId": "C",
-              "expr": "sum(increase(joutio_axon_events_published_total{application=\"joutio-matchmaking\", name=\"ChallengeDeclinedEvent\"}[1d]))",
+              "expr": "sum(increase(joutio_room_invitations_total{application=\"joutio-matchmaking\", outcome=\"DECLINED\"}[1d]))",
               "legendFormat": "déclinés"
             },
             {
               "refId": "D",
-              "expr": "sum(increase(joutio_axon_events_published_total{application=\"joutio-matchmaking\", name=\"ChallengeCancelledEvent\"}[1d]))",
+              "expr": "sum(increase(joutio_room_invitations_total{application=\"joutio-matchmaking\", outcome=\"CANCELLED\"}[1d]))",
               "legendFormat": "annulés"
             },
             {
               "refId": "E",
-              "expr": "sum(increase(joutio_axon_events_published_total{application=\"joutio-matchmaking\", name=\"ChallengeExpiredEvent\"}[1d]))",
+              "expr": "sum(increase(joutio_room_invitations_total{application=\"joutio-matchmaking\", outcome=\"EXPIRED\"}[1d]))",
               "legendFormat": "expirés"
             }
           ]
