@@ -100,7 +100,11 @@ spec:
             timeoutSeconds: 5
             failureThreshold: 6
           ports:
-            - containerPort: 8080
+            - name: http
+              containerPort: 8080
+            # Bus gRPC entre pods (joutio.axon.grpc.port) : interne au cluster, jamais exposé par un ingress.
+            - name: grpc
+              containerPort: 8124
 ---
 apiVersion: v1
 kind: Service
@@ -121,6 +125,11 @@ spec:
       protocol: TCP
       port: 80
       targetPort: 8080
+    # Publié par la découverte (métadonnée `port.grpc`), lu par les pairs du bus gRPC.
+    - name: grpc
+      protocol: TCP
+      port: 8124
+      targetPort: grpc
 ---
 apiVersion: v1
 kind: ConfigMap

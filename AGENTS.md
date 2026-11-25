@@ -27,6 +27,9 @@ Apps : `bff`, `identity`, `theme`, `social`, `matchmaking`, `profile`, `game`, `
 - Un nom unique par service, `joutio-<service>`, sauf `postgres`, `kafka` et `minio`. Les services
   Axon portent `app.kubernetes.io/component: axon` ; la console n'en a pas, car elle n'a pas de
   runtime Axon.
+- Un service Axon expose deux ports nommés : `http` (8080, port primaire de la découverte) et `grpc` (8124, bus gRPC
+  entre pods, publié en métadonnée `port.grpc`). `grpc` n'est jamais exposé par un ingress ; sans lui, le pod est
+  invisible du bus ([axon](../../docs/backend/axon.md#bus-grpc-entre-pods)).
 - Un Deployment piloté par HPA ne fixe pas `replicas`.
 - Placement : chaque service préfère un nœud sans Postgres ni Kafka (anti-affinité `preferred` sur `app: postgres|kafka`),
   pas d'étalement par nœud. Les requests CPU suivent l'usage mesuré sous charge : le scheduler place sur elles.
