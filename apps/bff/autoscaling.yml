@@ -13,7 +13,7 @@ spec:
     name: joutio-bff
   # Min 1 au repos (sobriété) : un rollout reste sans coupure (maxSurge), la perte du nœud du pod
   # coupe les sessions STOMP le temps de le replanifier.
-  minReplicas: 1
+  minReplicas: 2
   maxReplicas: 3
   metrics:
     - type: Resource
